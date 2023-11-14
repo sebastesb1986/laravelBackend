@@ -10,9 +10,15 @@ class Tags extends Model
     use HasFactory;
 
     protected $table = "tags";
-    protected $fillable = ['name', 'description'];
+    protected $fillable = ['name', 'description', 'user_id'];
 
     public $timestamps = false;
+
+    // Relation hasMany with User
+    public function users()
+    {
+        return $this->belongsTo(User::class, 'user_id', 'id');
+    }
 
     // Relation belongsTomany with tasks
     public function tasks()

@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use App\Http\Requests\AuthRequest;
+use App\Http\Requests\UserRequest;
 use App\Models\User;
 use Validator;
 
@@ -18,18 +20,16 @@ class AuthController extends Controller
      *
      * @return \Illuminate\Http\JsonResponse
      */
-    public function login(Request $request){
-    	$validator = Validator::make($request->all(), [
-            'email' => 'required|email',
-            'password' => 'required|string|min:6',
-        ]);
+    public function login(AuthRequest $request){
 
-        if ($validator->fails()) {
+    	$validator = $request->validated();
+
+        /*if ($validator->fails()) {
             return response()->json($validator->errors(), 422);
-        }
+        }*/
 
-        if (! $token = auth()->attempt($validator->validated())) {
-            return response()->json(['error' => 'Unauthorized'], 401);
+        if (! $token = auth()->attempt($validator)) {
+            return response()->json(['error' => 'Usuario NO registrado o Información incorrecta'], 401);
         }
 
 
@@ -41,28 +41,25 @@ class AuthController extends Controller
      *
      * @return \Illuminate\Http\JsonResponse
      */
-    public function register(Request $request) {
+    public function register(UserRequest $request) {
         
-        $validator = Validator::make($request->all(), [
-            'username' => 'required|string|between:2,100',
-            'email' => 'required|string|email|max:100|unique:users',
-            'password' => 'required|string|confirmed|min:6',
-        ]);
+        $validator = $request->validated();
 
-        if($validator->fails()){
+        /*if($validator->fails()){
             // return response()->json($validator->errors()->toJson(), 400);
             return response()->json($validator->errors(), 400);
-        }
+        }*/
 
         $user = User::create(array_merge(
-                    $validator->validated(),
-                    // ['password' => bcrypt($request->password)]
+                    $validator,
+                    ['password' => bcrypt($request->password)]
                 ));
 
         return response()->json([
             'message' => 'User successfully registered',
             'user' => $user
         ], 201);
+        
     }
 
 
@@ -98,7 +95,7 @@ class AuthController extends Controller
             $data = [  
                         "id" => $logged->id, 
                         "username" => $logged->name,
-                        "email" => $logged->lastname, 
+                        "email" => $logged->email, 
                     ];
 
             return response()->json(["logged_in" => $data]);

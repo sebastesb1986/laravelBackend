@@ -1,5 +1,6 @@
-$(function() {
+$(()=> {
 
+    // contenido Datatable
     $('#tags-table').DataTable({
         "language": {
                 "url": "/assets/js/spanish.json"
@@ -18,27 +19,50 @@ $(function() {
         pageLength: 8,
         lengthMenu: [2, 4, 6, 8, 10],
     });
+
+    // Toast para validacioens
+    toastr.options = {
+        "closeButton": true,
+        "debug": false,
+        "newestOnTop": false,
+        "progressBar": false,
+        "positionClass": "toast-bottom-right",
+        "preventDuplicates": false,
+        "onclick": null,
+        "showDuration": "300",
+        "hideDuration": "1000",
+        "timeOut": "5000",
+        "extendedTimeOut": "1000",
+        "showEasing": "swing",
+        "hideEasing": "linear",
+        "showMethod": "fadeIn",
+        "hideMethod": "fadeOut"
+    }
     
 });
 
+// Refresh Datatable
 function Cargar()
 {
     let table = $('#tags-table').DataTable();
     table.ajax.reload();
 }
 
+function cleanInput(){
 
-// Función para guardar los datos mediante AJAX
+    $('#name').val('').attr('disabled', false);
+    $('#description').val('').attr('disabled', false);
+
+}
+
+// Registrar y actualizar tarea en ventana modal
 function regStd()
 {
     $('#myModal').modal();
     $('#exampleModalLabel').html('Nueva tarea');
 
-     // LIMPIAR CAMPOS
-    $('#name').val('');
-    $('#description').val('');
-    $('#expirated_at').val('');
-    
+    // LIMPIAR CAMPOS
+    cleanInput()
     // FIN LIMPIAR CAMPOS
 
     let r = '<button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>'+
@@ -54,8 +78,7 @@ function upStd(btn)
     $('#exampleModalLabel').html('Modificar etiqueta');
 
     // LIMPIAR CAMPOS
-    $('#name').val('');
-    $('#description').val('');
+    cleanInput()
 
     $.get("showtgl/"+ btn, (response) => {
 
@@ -68,13 +91,13 @@ function upStd(btn)
     // FIN LIMPIAR CAMPOS
 
     let u = '<button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>'+
-            '<button id="editar" class="btn btn-warning" onclick="updateStd('+btn+')">Editar</button>';
+            '<button id="editar" class="btn btn-dark" onclick="updateStd('+btn+')">Editar</button>';
 
     $(".modal-footer").html(u);
 
 }
 
-// Register Task
+// Register, update and delete Tags with AJAX
 function registerStd()
 {
     let route = 'createtg';
@@ -95,17 +118,24 @@ function registerStd()
     }).then(response => {
   
             Cargar();
-            $('#myModal').modal('toggle');   
+            $('#myModal').modal('toggle');
+            toastr.success(response.message); 
         
     })
-    .catch(error => {
-        // handle error
-        console.log(error.status);
+    .catch(e => {
+        
+        const arr = e.responseJSON;
+        const toast = arr.errors;
+    
+        if (e.status == 422) {
+            if (toast.name != null) toastr.error(toast.name[0]);
+            if (toast.description != null) toastr.error(toast.description[0]);
+        }
+
     });
 
 }
 
-// Update Task
 function updateStd(btn)
 {  
     $('#myModal').modal();
@@ -129,16 +159,31 @@ function updateStd(btn)
 
         Cargar();
         $('#myModal').modal('toggle');
+        toastr.success(response.message);
        
     })
-    .catch(error => {
-         // handle error
-        console.log(error);
+    .catch(e => {
+        
+        const arr = e.responseJSON;
+        const toast = arr.errors;
+    
+        if (e.status == 422) {
+
+            if (toast.name != null) toastr.error(toast.name[0]);
+            if (toast.description != null) toastr.error(toast.description[0]);
+          
+        }
+        else if(e.status == 403){
+
+            $('#myModal').modal('toggle');
+            toastr.warning(arr.error);
+
+        }
+
     });
 
 }
 
-// Eliminar tarea
 function deleteStd(btn){
 
     let route = "deletetg/"+btn;
@@ -154,11 +199,16 @@ function deleteStd(btn){
 
             Cargar();
             $('#tags-table').DataTable().ajax.reload();
+            toastr.success(response.success);
            
         })
-        .catch(error => {
-             // handle error
-            console.log(error);
+        .catch(e => {
+             
+            const arr = e.responseJSON;
+            
+            toastr.warning(arr.error);
+              
+    
         });
     }
 }

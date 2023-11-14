@@ -36,7 +36,14 @@
 
             <div class="form-group mb-2">
                 <label for="expirated_at">Fecha caducidad</label>
-                <input type="text" name="expirated_at" id="expirated_at" class="form-control @error('expirated_at') is-invalid @enderror" placeholder="ejemplo: 2023-11-11" value="{{ old('expirated_at') }}" autofocus>
+                <div class="input-group">
+                    <div class="input-group-append"> 
+                        <span class="input-group-text"> 
+                            <i id="calendarIcon" class="fa fa-calendar"></i>
+                        </span>
+                    </div>
+                    <input type="text" name="expirated_at" id="expirated_at" class="form-control datepicker @error('expirated_at') is-invalid @enderror" placeholder="yyyy-mm-dd" value="{{ old('expirated_at') }}" autocomplete="off">
+                </div>
                 @error('expirated_at')
                     <span class="invalid-feedback" role="alert">
                         <strong>{{ $message }}</strong>
@@ -47,7 +54,6 @@
             <div class="form-group mb-2">
                 <label for="user_id">Usuario</label>
                 <select class="js-example-basic-single form-control" name="user_id" id="user_id">
-                    <option value="{{ auth()->user()->id }}">{{ auth()->user()->name }}</option>
                 </select>
                 @error('user_id')
                     <span class="invalid-feedback" role="alert">

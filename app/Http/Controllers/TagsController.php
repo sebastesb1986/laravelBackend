@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Yajra\Datatables\Datatables;
+use App\Http\Requests\TagsRequest;
 use App\Models\Tags;
 
 class TagsController extends Controller
@@ -20,7 +21,10 @@ class TagsController extends Controller
      // 1. Mostrar las etiquetas existentes
      public function index(Request $request){
 
-        $tags = Tags::select('id', 'name', 'description')
+        $tags = Tags::with(['users' => function($td){
+                        $td->select(['id', 'name', 'email']);
+                    }])
+                    ->select('id', 'name', 'description', 'user_id')
                     ->get();
 
         if ($request->ajax()) {
@@ -29,9 +33,20 @@ class TagsController extends Controller
             ->addIndexColumn()
             ->addColumn('details', function ($td) {
 
-                $href = '<button type="button" class="btn btn-warning btn-circle btn-sm" onclick="upStd('.$td->id.')" data-toggle="tooltip" data-placement="top" title="Modificar etiqueta"><i class="fas fa-pencil-alt"></i></button>&nbsp';
+                $href = '';
                 
-                $href .= '<button type="button" class="btn btn-danger btn-circle btn-sm" onclick="deleteStd('.$td->id.')" data-toggle="tooltip" data-placement="top" title="Quitar etiqueta"><i class="fas fa-trash"></i></button>';
+                if(auth()->user()->can('update', $td)){
+
+                    $href .= '<button type="button" class="btn btn-dark btn-circle btn-sm" onclick="upStd('.$td->id.')" data-toggle="tooltip" data-placement="top" title="Modificar etiqueta"><i class="fas fa-pencil-alt"></i></button>&nbsp';
+                    
+                    $href .= '<button type="button" class="btn btn-danger btn-circle btn-sm" onclick="deleteStd('.$td->id.')" data-toggle="tooltip" data-placement="top" title="Quitar etiqueta"><i class="fas fa-trash"></i></button>';
+                
+                }
+                else{
+
+                    $href .= '<label class="text-dark">Creada por: <b>' . $td->users->name . '</b></label>';
+                    
+                }
 
                 return $href;
                 
@@ -46,17 +61,23 @@ class TagsController extends Controller
     }
 
      // 2. Mostrar tarea
-     public function show($id)
+     public function show(Request $request, $id)
      {
+        if($request->ajax()){
+
          $tags = Tags::findOrFail($id);
          
          return response()->json([ 'tags' => $tags ]);
+         
+        }
  
      }
 
     // 3. Crear etiquetas
-    public function store(Request $request)
+    public function store(TagsRequest $request)
     {
+        // Obtener el usuario logueado
+        $user = auth()->user();
         // Datos obtenidos desde la interfaz para crear la etiqueta
         $data = [
 
@@ -66,7 +87,7 @@ class TagsController extends Controller
         ];
 
         // Crear etiqueta
-        $created = Tags::create($data);
+        $created = $user->tags()->create($data);
 
         // Comprobar que la etiqueta ha sido creada
         if($created){
@@ -80,7 +101,7 @@ class TagsController extends Controller
     }
 
      // 4. Actualizar etiqueta
-     public function update(Request $request, $id)
+     public function update(TagsRequest $request, $id)
      {
          // Obtener etiqueta a actualizar
          $tags = Tags::findOrFail($id);
@@ -91,15 +112,26 @@ class TagsController extends Controller
              'description' => $request->description,  
  
          ];
-       
-         // Crear etiqueta
-         $update = $tags->update($data);
- 
-         // Comprobar que la etiqueta ha sido actualizada
-         if($update){
-  
-             return response()->json(['message' => 'Etiqueta actualizada exitosamente'], 200);
-         }
+
+         // Politica para no actualizar tareas ajenas a las nuestras
+        try {
+
+            // Verifica si el usuario tiene permiso para actualizar la etiqueta
+            $this->authorize('update', $tags);
+            // Crear etiqueta
+            $update = $tags->update($data);
+    
+            // Comprobar que la etiqueta ha sido actualizada
+            if($update){
+    
+                return response()->json(['message' => 'Etiqueta actualizada exitosamente'], 200);
+            }
+
+        }catch (AuthorizationException $e) {
+
+            return response()->json(['error' => 'No estás autorizado para realizar esta acción'], 403);
+
+        }
         
  
      }
@@ -107,15 +139,25 @@ class TagsController extends Controller
      //5. eliminar etiqueta
      public function delete($id)
      {
-         $tags = Tags::findOrFail($id);
+
+        $tags = Tags::findOrFail($id);
        
-         $delete = $tags->delete();
-         
-         if($delete){
- 
-             return response()->json(['success'=>'Etiqueta eliminada exitosamente'], 200);
- 
-         }
+        try{
+
+            $this->authorize('update', $tags);
+            $delete = $tags->delete();
+            
+            if($delete){
+    
+                return response()->json(['success'=>'Etiqueta eliminada exitosamente'], 200);
+    
+            }
+        }catch (AuthorizationException $e) {
+
+            return response()->json(['error' => 'No estás autorizado para realizar esta acción'], 403);
+
+        }
+
      }
 
 }

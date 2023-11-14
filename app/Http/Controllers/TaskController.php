@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Yajra\Datatables\Datatables;
+use App\Http\Requests\TaskRequest;
 use App\Models\Task;
 
 class TaskController extends Controller
@@ -31,9 +32,12 @@ class TaskController extends Controller
 
                 $href = '<button type="button" class="btn btn-primary btn-circle btn-sm" onclick="showStd('.$td->id.')" data-toggle="tooltip" data-placement="top" title="Ver tarea"><i class="fas fa-eye"></i></button>&nbsp';
 
-                $href .= '<button type="button" class="btn btn-warning btn-circle btn-sm" onclick="upStd('.$td->id.')" data-toggle="tooltip" data-placement="top" title="Modificar tarea"><i class="fas fa-pencil-alt"></i></button>&nbsp';
+                if(auth()->user()->can('update', $td)){
+
+                    $href .= '<button type="button" class="btn btn-dark btn-circle btn-sm" onclick="upStd('.$td->id.')" data-toggle="tooltip" data-placement="top" title="Modificar tarea"><i class="fas fa-pencil-alt"></i></button>&nbsp';
+                    $href .= '<button type="button" class="btn btn-danger btn-circle btn-sm" onclick="deleteStd('.$td->id.')" data-toggle="tooltip" data-placement="top" title="Quitar tarea"><i class="fas fa-trash"></i></button>';
                 
-                $href .= '<button type="button" class="btn btn-danger btn-circle btn-sm" onclick="deleteStd('.$td->id.')" data-toggle="tooltip" data-placement="top" title="Quitar tarea"><i class="fas fa-trash"></i></button>';
+                }
 
                 return $href;
                 
@@ -48,22 +52,23 @@ class TaskController extends Controller
     }
 
     // 2. Mostrar tarea
-    public function show($id)
+    public function show(Request $request, $id)
     {
+       
         $task = Task::with(['users' => function($td){
                         $td->select('id', 'name');
                     }])
-                    ->findOrFail($id);
+                    ->with(['tags' => function($query) {
+                        $query->select('name');
+                    }])
+                    ->findOrFail($id);        
 
-                    $tags = $task->tags; // Obtiene las etiquetas asociadas a la tarea
-        
-
-        return response()->json([ 'task' => $task, 'tags' => $tags ]);
+        return response()->json([ 'task' => $task ]);
 
     }
 
     // 3. Crear tareas
-    public function store(Request $request)
+    public function store(TaskRequest $request)
     {
         // Obtener el usuario que ha iniciado sesión
         $user = auth()->user();
@@ -94,7 +99,7 @@ class TaskController extends Controller
     }
 
     // 4. Actualizar tarea
-    public function update(Request $request, $id)
+    public function update(TaskRequest $request, $id)
     {
         // Obtener el usuario que ha iniciado sesión
         $user = auth()->user();
@@ -130,7 +135,7 @@ class TaskController extends Controller
             }
         } catch (AuthorizationException $e) {
 
-            return response()->json(['error' => 'No tienes permiso para actualizar esta tarea'], 403);
+            return response()->json(['error' => 'No estás autorizado para realizar esta acción'], 403);
 
         }
 
@@ -141,9 +146,9 @@ class TaskController extends Controller
     {
         $task = Task::findOrFail($id);
 
-        $this->authorize('update', $task);
-
         try{
+
+            $this->authorize('update', $task);
 
             $delete = $task->delete();
 
@@ -156,7 +161,7 @@ class TaskController extends Controller
 
         }catch (AuthorizationException $e) {
 
-            return response()->json(['error' => 'No tienes permiso para eliminar esta tarea'], 403);
+            return response()->json(['error' => 'No estás autorizado para realizar esta acción'], 403);
 
         }
        

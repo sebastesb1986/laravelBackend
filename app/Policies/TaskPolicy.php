@@ -16,7 +16,7 @@ class TaskPolicy
     }
 
     // Controla que un usuario no edite o elimne tareas que no le correspondan
-    public function update(User $user, Task $task)
+    public function update(User $user, Task $task): bool
     {
         return $user->id === $task->user_id;
 

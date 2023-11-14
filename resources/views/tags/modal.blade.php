@@ -23,7 +23,7 @@
             </div>
 
             <div class="form-group mb-2">
-                <label for="description">Nombre</label>
+                <label for="description">Descripción</label>
                 <textarea class="form-control" name="description" id="description" class="form-control @error('description') is-invalid @enderror" placeholder="Descripción" rows="3">
                 {{ old('description') }}
                 </textarea>

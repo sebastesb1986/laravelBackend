@@ -15,10 +15,10 @@ class Task extends Model
     public $timestamps = false;
 
      // Relation hasMany with User
-     public function users()
-     {
-         return $this->belongsTo(User::class, 'user_id', 'id');
-     }
+    public function users()
+    {
+        return $this->belongsTo(User::class, 'user_id', 'id');
+    }
      
     // Relation belongsTomany with tags
     public function tags()

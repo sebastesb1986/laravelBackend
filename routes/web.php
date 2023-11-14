@@ -51,7 +51,6 @@ Route::group([
 
     // Task
     Route::get('/tk', [TaskController::class, 'index'])->name('tk.index');
-    Route::get('allTask', [TaskController::class, 'allTask'])->name('tk.all');
     Route::get('/showtk/{id}', [TaskController::class, 'show'])->name('tk.show');
     Route::post('/createtk', [TaskController::class, 'store'])->name('tk.create');
     Route::put('updatetk/{id}', [TaskController::class, 'update'])->name('tk.update');

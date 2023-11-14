@@ -1,5 +1,6 @@
-$(function() {
+$(() => {
 
+    // contenido Datatables 
     $('#task-table').DataTable({
         "language": {
                 "url": "/assets/js/spanish.json"
@@ -21,9 +22,52 @@ $(function() {
         pageLength: 8,
         lengthMenu: [2, 4, 6, 8, 10],
     });
+
+    // Datepicker configuración fecha de caducidad
+    $('.datepicker').attr('readonly', true);
+
+    $('.datepicker').datepicker({
+        format: "yyyy-mm-dd",
+        language: "es",
+        orientation: "top right",
+        autoclose: true,
+        startDate: '-1d'
+    }).on('show', function(e) {
+
+        let dateValue = $(this).val();
+        
+        // Si no hay fecha seleccionada, establecer la fecha actual
+        $(this).datepicker('setDate', new Date());
+
+        if (dateValue) {
+            let date = new Date(dateValue + "T00:00:00");
+            $(this).datepicker('setDate', date);
+        }
+    })
+
+    // Toast para validacioens
+    toastr.options = {
+        "closeButton": true,
+        "debug": false,
+        "newestOnTop": false,
+        "progressBar": false,
+        "positionClass": "toast-bottom-right",
+        "preventDuplicates": false,
+        "onclick": null,
+        "showDuration": "300",
+        "hideDuration": "1000",
+        "timeOut": "5000",
+        "extendedTimeOut": "1000",
+        "showEasing": "swing",
+        "hideEasing": "linear",
+        "showMethod": "fadeIn",
+        "hideMethod": "fadeOut"
+    }
+    
     
 });
 
+// Refresh Datatable
 function Cargar()
 {
     let table = $('#task-table').DataTable();
@@ -31,23 +75,15 @@ function Cargar()
 }
 
 // Limpiar inputs
-function cleanDisableInput(){
+function cleanInput(btn){
 
-    $('#name').val('').attr('disabled', true);
-    $('#description').val('').attr('disabled', true);
-    $('#expirated_at').val('').attr('disabled', true);
-    $('#user_id').val(null).trigger('change').attr('disabled', true);
-    $('#tags').html('').attr('disabled', true);
+    const bool = (btn == null) ? false : true;
 
-}
-
-function cleanInput(){
-
-    $('#name').val('').attr('disabled', false);
-    $('#description').val('').attr('disabled', false);
-    $('#expirated_at').val('').attr('disabled', false);
-    $('#user_id').val(null).trigger('change').attr('disabled', false);
-    $('#tags').html('').attr('disabled', false);
+    $('#name').val('').attr('disabled', bool);
+    $('#description').val('').attr('disabled', bool);
+    $('#expirated_at').val('').attr('disabled', bool);
+    $('#user_id').val(null).trigger('change').attr('disabled', bool);
+    $('#tags').html('').attr('disabled', bool);
 
 }
 
@@ -68,18 +104,39 @@ $("#user_id").select2({
         dataType: 'json',
         delay: 250,
         processResults: function (data) {
-
             let cnt = data.users;
-            
+            let auth = data.auth;
+        
+            // Guarda la referencia al elemento select2
+            let $select2 = $("#user_id");
+        
+            // Limpia las opciones existentes
+            $select2.empty();
+        
+            // Agrega una opción para el usuario autenticado
+            $select2.append(new Option(auth.name, auth.id, true, true));
+        
+            // Mapeo de los resultados
+            let results = $.map(cnt, (item) => {
+                return {
+                    text: item.name,
+                    id: item.id
+                };
+            });
+        
+            // Agrega el resto de las opciones
+            results.forEach((item) => {
+                $select2.append(new Option(item.text, item.id, false, false));
+            });
+        
+            // Inicializa Select2 nuevamente
+            $select2.trigger('change');
+        
             return {
-                results: $.map(cnt, (item) => {
-                    return {
-                        text: item.name,
-                        id: item.id
-                    }
-                })
+                results: results
             };
-        },
+        }
+        ,
         cache: true
     }
 });
@@ -117,40 +174,46 @@ $("#tags").select2({
     }
 });
 
-// Ver tarea
+// Mostrar tarea según su Id
+function showCustomTask(btn){
+
+    $.get("showtk/"+ btn, (response) => {
+
+        let std = response.task;
+        let tgs = std.tags;
+
+        $('#name').val(std.name);
+        $('#description').val(std.description)
+        $('#expirated_at').val(std.expirated_at)
+        $("#user_id").html(`<option value=${std.users.id}>${std.users.name}</option>`)
+
+         // Llenar el select de tags con múltiples opciones
+         tgs.forEach(tag => {
+
+            let option = new Option(tag.name, tag.pivot.tags_id, true, true); // Crear una nueva opción
+            $('#tags').append(option); // Agregar la opción al select
+        
+            // Enviar los datos de las etiquetas a la vista
+            $('#tags').trigger('change');
+        });
+        
+        // Actualizar etiquetas en la vista
+        $('#tags').trigger('change');
+
+    });
+
+}
+
+// Ver, Registrar y actualizar tarea en ventana modal
 function showStd(btn)
 {
     $('#myModal').modal();
     $('#exampleModalLabel').html("<b>Detalles tarea</b>");
 
     // LIMPIAR CAMPOS
-    cleanDisableInput();
+    cleanInput(btn);
 
-    $.get("showtk/"+ btn, (response) => {
-
-            let std = response.task;
-            let tgs = response.tags;
-
-           
-
-            $('#name').val(std.name);
-            $('#description').val(std.description)
-            $('#expirated_at').val(std.expirated_at)
-            $("#user_id").html(`<option value=${std.users.id}>${std.users.name}</option>`)
-
-             // Llenar el select de tags con múltiples opciones
-             tgs.forEach(tag => {
-                let option = new Option(tag.name, tag.id, true, true); // Crear una nueva opción
-                $('#tags').append(option); // Agregar la opción al select
-            
-                // Enviar los datos de las etiquetas a la vista
-                $('#tags').trigger('change');
-            });
-            
-            // Actualizar etiquetas en la vista
-            $('#tags').trigger('change');
-
-    });
+    showCustomTask(btn);
     // FIN LIMPIAR CAMPOS
 
     let u = '<button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>';
@@ -159,7 +222,6 @@ function showStd(btn)
 
 }
 
-// Función para guardar los datos mediante AJAX
 function regStd()
 {
     $('#myModal').modal();
@@ -185,39 +247,17 @@ function upStd(btn)
     // LIMPIAR CAMPOS
     cleanInput();
 
-    $.get("showtk/"+ btn, (response) => {
-
-            let std = response.task;
-            let tgs = response.tags;
-
-            $('#name').val(std.name);
-            $('#description').val(std.description);
-            $('#expirated_at').val(std.expirated_at);
-            $("#user_id").html(`<option value=${std.users.id}>${std.users.name}</option>`);
-
-             // Llenar el select de tags con múltiples opciones
-             tgs.forEach(tag => {
-                let option = new Option(tag.name, tag.id, true, true); // Crear una nueva opción
-                $('#tags').append(option); // Agregar la opción al select
-            
-                // Enviar los datos de las etiquetas a la vista
-                $('#tags').trigger('change');
-            });
-            
-            // Actualizar etiquetas en la vista
-            $('#tags').trigger('change');
-
-    });
+    showCustomTask(btn);
     // FIN LIMPIAR CAMPOS
 
     let u = '<button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>'+
-            '<button id="editar" class="btn btn-warning" onclick="updateStd('+btn+')">Editar</button>';
+            '<button id="editar" class="btn btn-dark" onclick="updateStd('+btn+')">Editar</button>';
 
     $(".modal-footer").html(u);
 
 }
 
-// Register Task
+// Register, update and delete Task with AJAX
 function registerStd()
 {
     let route = 'createtk';
@@ -239,21 +279,29 @@ function registerStd()
         dataType: 'json',
         data: ajax_data,
     }).then(response => {
-  
-            Cargar();
-            $('#myModal').modal('toggle');
-            
-        
-        
+
+        Cargar();
+        $('#myModal').modal('toggle');
+        toastr.success(response.message);
+                 
     })
-    .catch(error => {
-        // handle error
-        console.log(error.status);
+    .catch(e => {
+
+        const arr = e.responseJSON;
+        const toast = arr.errors;
+    
+        if (e.status == 422) {
+            if (toast.name != null) toastr.error(toast.name[0]);
+            if (toast.description != null) toastr.error(toast.description[0]);
+            if (toast.expirated_at != null) toastr.error(toast.expirated_at[0]);
+            if (toast.user_id != null) toastr.error(toast.user_id[0]);
+        }
+
     });
+    
 
 }
 
-// Update Task
 function updateStd(btn)
 {  
     $('#myModal').modal();
@@ -280,19 +328,33 @@ function updateStd(btn)
     
         Cargar();
         $('#myModal').modal('toggle');
-       
+        toastr.success(response.message);
+
     })
-    .catch(error => {
-         // handle error
-         if(error.status == 403){
+    .catch(e => {
+         
+        const arr = e.responseJSON;
+        const toast = arr.errors;
+    
+        if (e.status == 422) {
+
+            if (toast.name != null) toastr.error(toast.name[0]);
+            if (toast.description != null) toastr.error(toast.description[0]);
+            if (toast.expirated_at != null) toastr.error(toast.expirated_at[0]);
+            if (toast.user_id != null) toastr.error(toast.user_id[0]);
+        }
+
+        else if(e.status == 403){
 
             $('#myModal').modal('toggle');
-         }
+            toastr.warning(arr.error);
+
+        }
+
     });
 
 }
 
-// Eliminar tarea
 function deleteStd(btn){
 
     let route = "deletetk/"+btn;
@@ -308,15 +370,20 @@ function deleteStd(btn){
 
             Cargar();
             $('#task-table').DataTable().ajax.reload();
+            toastr.success(response.success);
            
         })
-        .catch(error => {
-             // handle error
-             if(error.status == 403){
+        .catch(e => {
+             
+            const arr = e.responseJSON;
+          
+             if(e.status == 403){
 
-              alert("No puedes eliminar esta tarea, no te pertenece");
+                toastr.warning(arr.error);
               
              }
         });
     }
 }
+
+  

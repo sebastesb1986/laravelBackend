@@ -3,25 +3,34 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Http\Requests\UserRequest;
 use App\Models\User;
 
 class UserController extends Controller
 {
-    public function userList()
+    public function userList(Request $request)
     {
-        $users = User::select('id', 'name')->get();
+        // Obtenermos el usuario logueado
+        $auth = auth()->user();
 
-        return response()->json(['users' => $users]);
+        if($request->ajax()){
+            // Lista de usuarios registrados
+            $users = User::select('id', 'name')->get();
+
+            return response()->json(['users' => $users, 'auth' => $auth]);
+        }
 
     }
 
-    public function show($id)
+    public function show(Request $request, $id)
     {
+        if($request->ajax()){
 
-        $User = User::select('id', 'name')
-                    ->findOrFail($id);
+            $user = User::select('id', 'name')
+                        ->findOrFail($id);
 
-        return response()->json([ 'user' => $user ]);
-
+            return response()->json([ 'user' => $user ]);
+            
+        }
     }
 }
